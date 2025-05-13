@@ -130,7 +130,7 @@ public class UltraSimpleUserStorage {
             if (authorize(email, password)) {
                 System.out.println("Login successful!");
             } else {
-                System.out.println("Invalid email or password");
+                System.out.println("Invalid email or password\n");
             }
         }
 
@@ -152,17 +152,29 @@ public class UltraSimpleUserStorage {
          */
         public static void loadUsers() {
             File file = new File(FILENAME);
-            if (!file.exists()) return;
+            if (!file.exists() || file.length() == 0) {
+                usersToSave = new ArrayList<>();
+                nextId = 1;
+                return;
+            }
 
             try (FileInputStream fis = new FileInputStream(FILENAME);
                  ObjectInputStream ois = new ObjectInputStream(fis)) {
-                usersToSave = (List<User>) ois.readObject();
-                nextId = usersToSave.stream()
-                                 .mapToInt(u -> u.id)
-                                 .max()
-                                 .orElse(0) + 1;
+                Object obj = ois.readObject();
+                if (obj != null) {
+                    usersToSave = (List<User>) obj;
+                    nextId = usersToSave.stream()
+                                     .mapToInt(u -> u.id)
+                                     .max()
+                                     .orElse(0) + 1;
+                } else {
+                    usersToSave = new ArrayList<>();
+                    nextId = 1;
+                }
             } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Error loading users: " + e.getMessage());
+                // Silently initialize empty user list instead of showing error
+                usersToSave = new ArrayList<>();
+                nextId = 1;
             }
         }
 
