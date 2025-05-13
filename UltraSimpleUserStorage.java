@@ -144,13 +144,13 @@ public class UltraSimpleUserStorage {
             int choice = scanner.nextInt();
             switch (choice) {
                 case 1:
-                    System.out.println("\n");
+                    System.out.println();
                     User.register();
                 case 2:
-                    System.out.println("\n");
+                    System.out.println();
                     User.login();
                 case 3:
-                    System.out.println("\n");
+                    System.out.println();
                     System.out.println("Thank you for using the Self Budgeting app!");
                     System.out.println("Exiting...");
                     System.exit(0);
