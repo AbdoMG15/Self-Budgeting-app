@@ -3,11 +3,13 @@
  * Users are stored in a serialized file for persistence.
  */
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+
 public class UltraSimpleUserStorage {
 
     /**
@@ -26,16 +28,8 @@ public class UltraSimpleUserStorage {
         private String password;
         private static int nextId = 1;
 
-        private Map<String, Double> budgets = new HashMap<>();
+        private BudgetSystem budgetSystem = new BudgetSystem(); // Initialize here
 
-        /**
-         * Constructs a new User with the specified details.
-         *
-         * @param id the user's unique identifier
-         * @param name the user's name
-         * @param email the user's email address
-         * @param password the user's password
-         */
         public User(int id, String name, String email, String password) {
             this.id = id;
             this.name = name;
@@ -43,110 +37,22 @@ public class UltraSimpleUserStorage {
             this.password = password;
         }
 
-        /**
-         * Shows the main menu after successful login.
-         * @param user The logged in user
-         */
-        private static void showMainMenu(User user) {
-            while (true) {
-                System.out.println("\n=== Main Menu ===");
-                System.out.println("1. Budgeting & Analysis");
-                System.out.println("2. Logout");
-                System.out.print("Enter your choice: ");
-                
-                int choice;
-                try {
-                    choice = Integer.parseInt(scanner.nextLine());
-                } catch (NumberFormatException e) {
-                    System.out.println("Please enter a valid number.");
-                    continue;
-                }
-
-                switch (choice) {
-                    case 1:
-                        budgetingAndAnalysisMenu(user);
-                        break;
-                    case 2:
-                        System.out.println("Logging out...");
-                        return;
-                    default:
-                        System.out.println("Invalid choice. Please try again.");
-                }
+        private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+            ois.defaultReadObject();
+            // Ensure budgetSystem is initialized after deserialization
+            if (budgetSystem == null) {
+                budgetSystem = new BudgetSystem();
             }
-        }
-        
-        /**
-         * Shows the Budgeting & Analysis menu with options to manage budgets.
-         * @param user The logged in user
-         */
-        private static void budgetingAndAnalysisMenu(User user) {
-            while (true) {
-                System.out.println("\n=== Budgeting & Analysis ===");
-                System.out.println("1. Set a new budget");
-                System.out.println("2. View current budgets");
-                System.out.println("3. Back to Main Menu");
-                System.out.print("Enter your choice: ");
-                
-                int choice;
-                try {
-                    choice = Integer.parseInt(scanner.nextLine());
-                } catch (NumberFormatException e) {
-                    System.out.println("Please enter a valid number.");
-                    continue;
-                }
-
-                switch (choice) {
-                    case 1:
-                        setNewBudget(user);
-                        break;
-                    case 2:
-                        viewCurrentBudgets(user);
-                        break;
-                    case 3:
-                        return;
-                    default:
-                        System.out.println("Invalid choice. Please try again.");
-                }
+            // Initialize transient scanner in BudgetSystem
+            if (budgetSystem != null) {
+                budgetSystem.initializeTransientFields();
             }
         }
 
-        /**
-         * Allows user to set a new budget category and amount.
-         * @param user The logged in user
-         */
-        private static void setNewBudget(User user) {
-            System.out.println("\n=== Set New Budget ===");
-            System.out.print("Enter budget category: ");
-            String category = scanner.nextLine();
-            System.out.print("Enter budget amount: ");
-            
-            double amount;
-            try {
-                amount = Double.parseDouble(scanner.nextLine());
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid amount. Please enter a number.");
-                return;
-            }
-
-            user.budgets.put(category, amount);
-            System.out.println("Budget for " + category + " set to $" + amount);
-            saveUsers(); // Save the updated user data
+        public BudgetSystem getBudgetSystem() {
+            return budgetSystem;
         }
 
-        /**
-         * Displays all current budgets for the user.
-         * @param user The logged in user
-         */
-        private static void viewCurrentBudgets(User user) {
-            System.out.println("\n=== Current Budgets ===");
-            if (user.budgets.isEmpty()) {
-                System.out.println("No budgets set yet.");
-            } else {
-                for (Map.Entry<String, Double> entry : user.budgets.entrySet()) {
-                    System.out.printf("%-20s: $%.2f%n", entry.getKey(), entry.getValue());
-                }
-            }
-        }
         public static void register() {
             loadUsers();
 
@@ -155,8 +61,8 @@ public class UltraSimpleUserStorage {
             while (true) {
                 System.out.println("Enter your name: ");
                 userName = scanner.nextLine();
-                if (userName == "") {
-                    System.out.println("Name cannot be null. Please try again.");
+                if (userName.isEmpty()) {
+                    System.out.println("Name cannot be empty. Please try again.");
                     continue;
                 }
                 break;
@@ -164,8 +70,8 @@ public class UltraSimpleUserStorage {
             while (true) {
                 System.out.println("Enter your email: ");
                 userEmail = scanner.nextLine();
-                if(userEmail == ""){
-                    System.out.println("Email cannot be null. Please try again.");
+                if(userEmail.isEmpty()){
+                    System.out.println("Email cannot be empty. Please try again.");
                     continue;
                 }
                 if (authorize(userEmail)) {
@@ -177,8 +83,8 @@ public class UltraSimpleUserStorage {
             while(true){
                 System.out.println("Enter your password: ");
                 userPassword = scanner.nextLine();
-                if(userPassword == ""){
-                    System.out.println("Password cannot be null. Please try again.");
+                if(userPassword.isEmpty()){
+                    System.out.println("Password cannot be empty. Please try again.");
                     continue;
                 }
                 break;
@@ -189,23 +95,10 @@ public class UltraSimpleUserStorage {
             System.out.println("Registration successful!");
         }
 
-        /**
-         * Checks if a user with the given email exists in the system.
-         *
-         * @param email the email to check
-         * @return true if a user with the email exists, false otherwise
-         */
         public static boolean authorize(String email) {
             return authorize(email, null);
         }
 
-        /**
-         * Authenticates a user by checking if the email and password match a stored user.
-         *
-         * @param email the user's email
-         * @param password the user's password (can be null for email-only check)
-         * @return true if authentication succeeds, false otherwise
-         */
         public static boolean authorize(String email, String password) {
             loadUsers();
             
@@ -220,9 +113,6 @@ public class UltraSimpleUserStorage {
             return false;
         }
 
-        /**
-         * Handles the user login process by collecting credentials and verifying them.
-         */
         public static User login() {
             loadUsers();
             System.out.println("===Login Page===\n");
@@ -242,9 +132,6 @@ public class UltraSimpleUserStorage {
             return null;
         }
 
-        /**
-         * Saves the current list of users to a serialized file.
-         */
         public static void saveUsers() {
             try (FileOutputStream fos = new FileOutputStream(FILENAME);
                  ObjectOutputStream oos = new ObjectOutputStream(fos)) {
@@ -254,10 +141,6 @@ public class UltraSimpleUserStorage {
             }
         }
 
-        /**
-         * Loads the list of users from a serialized file.
-         * Initializes the nextId counter based on the highest existing user ID.
-         */
         public static void loadUsers() {
             File file = new File(FILENAME);
             if (!file.exists() || file.length() == 0) {
@@ -280,17 +163,11 @@ public class UltraSimpleUserStorage {
                     nextId = 1;
                 }
             } catch (IOException | ClassNotFoundException e) {
-                // Silently initialize empty user list instead of showing error
                 usersToSave = new ArrayList<>();
                 nextId = 1;
             }
         }
 
-        /**
-         * Returns a string representation of the user.
-         *
-         * @return a string containing the user's id, name, and email
-         */
         @Override
         public String toString() {
             return "User{id=" + id + ", name='" + name + "', email='" + email + "'}";
@@ -298,40 +175,143 @@ public class UltraSimpleUserStorage {
     }
 
     /**
-     * The main entry point for the application.
-     * Presents a menu for user registration, login, or exit.
-     *
-     * @param args command line arguments (not used)
+     * Handles all budgeting functionality for a user
      */
+    static class BudgetSystem implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private Map<String, Double> budgets = new HashMap<>();
+        private transient Scanner scanner;
+        private transient DecimalFormat df;
+
+        public void initializeTransientFields() {
+            this.scanner = new Scanner(System.in);
+            this.df = new DecimalFormat("#.00");
+        }
+
+        public BudgetSystem() {
+            initializeTransientFields();
+        }
+
+        public void showBudgetMenu() {
+            while (true) {
+                System.out.println("\n=== Budgeting Menu ===");
+                System.out.println("1. Set a new budget");
+                System.out.println("2. View current budgets");
+                System.out.println("3. Back to Main Menu");
+                System.out.print("Enter your choice: ");
+                
+                try {
+                    int choice = Integer.parseInt(scanner.nextLine());
+                    switch (choice) {
+                        case 1:
+                            setNewBudget();
+                            break;
+                        case 2:
+                            viewCurrentBudgets();
+                            break;
+                        case 3:
+                            return;
+                        default:
+                            System.out.println("Invalid choice. Please try again.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Please enter a valid number.");
+                }
+            }
+        }
+
+        private void setNewBudget() {
+            System.out.println("\n=== Set New Budget ===");
+            System.out.print("Enter budget category: ");
+            String category = scanner.nextLine();
+            System.out.print("Enter budget amount: ");
+            
+            try {
+                double amount = Double.parseDouble(scanner.nextLine());
+                budgets.put(category, amount);
+                System.out.println("Budget for " + category + " set to $" + df.format(amount));
+                User.saveUsers();
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid amount. Please enter a number.");
+            }
+        }
+
+        private void viewCurrentBudgets() {
+            System.out.println("\n=== Current Budgets ===");
+            if (budgets.isEmpty()) {
+                System.out.println("No budgets set yet.");
+            } else {
+                budgets.forEach((category, amount) -> 
+                    System.out.printf("%-20s: $%s%n", category, df.format(amount)));
+            }
+        }
+    }
+
+    static class MainMenu {
+        private static Scanner scanner = new Scanner(System.in);
+
+        public static void showMainMenu(User user) {
+            while (true) {
+                System.out.println("\n=== Main Menu ===");
+                System.out.println("1. Budgeting");
+                System.out.println("2. Logout");
+                System.out.print("Enter your choice: ");
+                
+                try {
+                    int choice = Integer.parseInt(scanner.nextLine());
+                    switch (choice) {
+                        case 1:
+                            // Ensure budget system is properly initialized
+                            if (user.getBudgetSystem() == null) {
+                                user = new User(user.id, user.name, user.email, user.password);
+                            }
+                            user.getBudgetSystem().showBudgetMenu();
+                            break;
+                        case 2:
+                            System.out.println("Logging out...");
+                            return;
+                        default:
+                            System.out.println("Invalid choice. Please try again.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Please enter a valid number.");
+                }
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         System.out.println("***Welcome to Self Budgeting app***");
-        while (true) { 
-            System.out.println("What would you like to do?");
+        while (true) {
+            System.out.println("\nWhat would you like to do?");
             System.out.println("1. Register");
             System.out.println("2. Login");
             System.out.println("3. Exit");
-            int choice = scanner.nextInt();
-            switch (choice) {
-                case 1:
-                    System.out.println();
-                    User.register();
-                    break;
-                case 2:
-                    System.out.println();
-                    User loggedInUser = User.login();
-                    if (loggedInUser != null) {
-                        User.showMainMenu(loggedInUser);
-                    }
-                case 3:
-                    System.out.println();
-                    System.out.println("Thank you for using the Self Budgeting app!");
-                    System.out.println("Exiting...");
-                    System.exit(0);
-                default:
-                    System.out.println("Invalid choice. Please try again.\n");
-            }
+            System.out.print("Enter your choice: ");
             
+            try {
+                int choice = Integer.parseInt(scanner.nextLine());
+                switch (choice) {
+                    case 1:
+                        User.register();
+                        break;
+                    case 2:
+                        User loggedInUser = User.login();
+                        if (loggedInUser != null) {
+                            MainMenu.showMainMenu(loggedInUser);
+                        }
+                        break;
+                    case 3:
+                        System.out.println("Thank you for using the Self Budgeting app!");
+                        System.out.println("Exiting...");
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
         }
     }
 }
