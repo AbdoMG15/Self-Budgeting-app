@@ -4,7 +4,9 @@
  */
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 public class UltraSimpleUserStorage {
 
@@ -24,6 +26,8 @@ public class UltraSimpleUserStorage {
         private String password;
         private static int nextId = 1;
 
+        private Map<String, Double> budgets = new HashMap<>();
+
         /**
          * Constructs a new User with the specified details.
          *
@@ -40,9 +44,109 @@ public class UltraSimpleUserStorage {
         }
 
         /**
-         * Handles the user registration process by collecting user information,
-         * validating inputs, and saving the new user to storage.
+         * Shows the main menu after successful login.
+         * @param user The logged in user
          */
+        private static void showMainMenu(User user) {
+            while (true) {
+                System.out.println("\n=== Main Menu ===");
+                System.out.println("1. Budgeting & Analysis");
+                System.out.println("2. Logout");
+                System.out.print("Enter your choice: ");
+                
+                int choice;
+                try {
+                    choice = Integer.parseInt(scanner.nextLine());
+                } catch (NumberFormatException e) {
+                    System.out.println("Please enter a valid number.");
+                    continue;
+                }
+
+                switch (choice) {
+                    case 1:
+                        budgetingAndAnalysisMenu(user);
+                        break;
+                    case 2:
+                        System.out.println("Logging out...");
+                        return;
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
+            }
+        }
+        
+        /**
+         * Shows the Budgeting & Analysis menu with options to manage budgets.
+         * @param user The logged in user
+         */
+        private static void budgetingAndAnalysisMenu(User user) {
+            while (true) {
+                System.out.println("\n=== Budgeting & Analysis ===");
+                System.out.println("1. Set a new budget");
+                System.out.println("2. View current budgets");
+                System.out.println("3. Back to Main Menu");
+                System.out.print("Enter your choice: ");
+                
+                int choice;
+                try {
+                    choice = Integer.parseInt(scanner.nextLine());
+                } catch (NumberFormatException e) {
+                    System.out.println("Please enter a valid number.");
+                    continue;
+                }
+
+                switch (choice) {
+                    case 1:
+                        setNewBudget(user);
+                        break;
+                    case 2:
+                        viewCurrentBudgets(user);
+                        break;
+                    case 3:
+                        return;
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
+            }
+        }
+
+        /**
+         * Allows user to set a new budget category and amount.
+         * @param user The logged in user
+         */
+        private static void setNewBudget(User user) {
+            System.out.println("\n=== Set New Budget ===");
+            System.out.print("Enter budget category: ");
+            String category = scanner.nextLine();
+            System.out.print("Enter budget amount: ");
+            
+            double amount;
+            try {
+                amount = Double.parseDouble(scanner.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid amount. Please enter a number.");
+                return;
+            }
+
+            user.budgets.put(category, amount);
+            System.out.println("Budget for " + category + " set to $" + amount);
+            saveUsers(); // Save the updated user data
+        }
+
+        /**
+         * Displays all current budgets for the user.
+         * @param user The logged in user
+         */
+        private static void viewCurrentBudgets(User user) {
+            System.out.println("\n=== Current Budgets ===");
+            if (user.budgets.isEmpty()) {
+                System.out.println("No budgets set yet.");
+            } else {
+                for (Map.Entry<String, Double> entry : user.budgets.entrySet()) {
+                    System.out.printf("%-20s: $%.2f%n", entry.getKey(), entry.getValue());
+                }
+            }
+        }
         public static void register() {
             loadUsers();
 
@@ -119,7 +223,7 @@ public class UltraSimpleUserStorage {
         /**
          * Handles the user login process by collecting credentials and verifying them.
          */
-        public static void login() {
+        public static User login() {
             loadUsers();
             System.out.println("===Login Page===\n");
             System.out.println("Enter email: ");
@@ -127,11 +231,15 @@ public class UltraSimpleUserStorage {
             System.out.println("Enter password: ");
             String password = scanner.nextLine();
             
-            if (authorize(email, password)) {
-                System.out.println("Login successful!");
-            } else {
-                System.out.println("Invalid email or password\n");
+            for (User user : usersToSave) {
+                if (user.email.equalsIgnoreCase(email) && user.password.equals(password)) {
+                    System.out.println("Login successful!");
+                    return user;
+                }
             }
+            
+            System.out.println("Invalid email or password\n");
+            return null;
         }
 
         /**
@@ -211,8 +319,10 @@ public class UltraSimpleUserStorage {
                     break;
                 case 2:
                     System.out.println();
-                    User.login();
-                    break;
+                    User loggedInUser = User.login();
+                    if (loggedInUser != null) {
+                        User.showMainMenu(loggedInUser);
+                    }
                 case 3:
                     System.out.println();
                     System.out.println("Thank you for using the Self Budgeting app!");
@@ -221,6 +331,7 @@ public class UltraSimpleUserStorage {
                 default:
                     System.out.println("Invalid choice. Please try again.\n");
             }
+            
         }
     }
 }
